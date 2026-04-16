@@ -1,4 +1,4 @@
-﻿# Monocular Multi-View Distance Measurement System
+﻿# Monocular  Distance Measurement System
 <p align="center">
   <img src="./apps/flask_demo/app/static/img/logo.png" alt="Leinoo 中科类脑" height="180" width="800"/> 
 </p>
