@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="navbar">
+  <div class="menu-container">
+    <div class="menu-btn" id="fileMenuBtn">文件</div>
+    <div class="dropdown-menu" id="fileDropdown">
+      <div class="menu-item" id="importImages">导入图片（批量）</div>
+      <div class="menu-divider"></div>
+      <div class="menu-item" id="importIntrinsics">导入内参JSON</div>
+      <div class="menu-item" id="importExtrinsics">导入外参JSON</div>
+      <div class="menu-item" id="openCameraModal">手动设置内外参</div>
+      <div class="menu-divider"></div>
+      <div class="menu-item" id="exportJson">导出标注点JSON(批量)</div>
+      <div class="menu-item" id="exportCsv">导出结果CSV</div>
+      <div class="menu-item" id="exportLineImage">导出连线图</div>
+    </div>
+  </div>
+
+  <div class="nav-status" id="statusText">未加载图片</div>
+</div>
+
+<div class="container">
+  <div class="sidebar left">
+    <div class="tool-item" id="toolPoint">标注点</div>
+    <div class="tool-item" id="toolFit">适配窗口</div>
+    <div class="tool-item" id="toolCompute3D">计算3D坐标</div>
+    <div class="tool-item" id="toolDistance">距离标识</div>
+
+    <div class="tool-tip">
+      Ctrl+滚轮：缩放<br>
+      滚轮：滚动<br>
+      拖动点：移动位置<br>
+      Delete：删除选中点<br>
+      双击列表ID：改ID（仅数字且不重复）
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- 添加一个容器来包裹多图和单图区域，实现水平排列 -->
+    <div class="image-container">
+      <div id="gridView" class="grid-view"></div>
+      <div class="single-view" id="singleView">
+        <div class="canvas-wrapper">
+          <canvas id="canvas"></canvas>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 这里可以放置其他内容，如果需要的话 -->
+  </div>
+
+  <div class="sidebar right">
+    <div class="panel-title">点列表</div>
+    <div class="point-list" id="pointList"></div>
+
+    <div class="panel-title" style="margin-top:12px;">当前点</div>
+    <div class="current-point" id="currentPoint">未选中</div>
+
+    <div class="panel-title" style="margin-top:12px;">计算结果预览</div>
+    <!-- <pre class="compute-preview" id="computePreview">点击"计算3D坐标"生成 _3d_position</pre> -->
+     <pre class="compute-preview" id="computePreview">
+      <!-- JavaScript应该将数据格式化为以下结构 -->
+      <div class="result-item">
+        <div class="pair-info">A(1) → B(2)</div>
+        <div class="coord-info">(3293.00, 3460.00) → (3869.00, 2737.00)</div>
+        <div class="distance-info">1.015</div>
+      </div>
+      <div class="result-item">
+        <div class="pair-info">A(2) → B(3)</div>
+        <div class="coord-info">(3869.00, 2737.00) → (4246.00, 2878.00)</div>
+        <div class="distance-info">0.906</div>
+      </div>
+      <div class="result-item">
+        <div class="pair-info">A(3) → B(1)</div>
+        <div class="coord-info">(4246.00, 2878.00) → (3293.00, 3460.00)</div>
+        <div class="distance-info">1.613</div>
+      </div>
+    </pre>
+  </div>
+</div>
+
+<input type="file" id="imageInput" accept="image/*" multiple hidden>
+<input type="file" id="intrinsicsInput" accept=".json,application/json" hidden>
+<input type="file" id="extrinsicsInput" accept=".json,application/json" hidden>
+
+<!-- 手动设置内外参：数值表单 -->
+<div class="modal hidden" id="cameraModal">
+  <div class="modal-card">
+    <div class="modal-header">手动设置内外参（数值）</div>
+
+    <div class="modal-body form-body">
+      <!-- 内参 -->
+      <div class="form-section">
+        <div class="form-title">内参（K）与畸变（dist）</div>
+
+        <div class="form-grid">
+          <div class="form-field">
+            <div class="form-label">fx</div>
+            <input class="form-input" id="fxInput" type="number" step="any" placeholder="0">
+          </div>
+          <div class="form-field">
+            <div class="form-label">fy</div>
+            <input class="form-input" id="fyInput" type="number" step="any" placeholder="0">
+          </div>
+          <div class="form-field">
+            <div class="form-label">cx</div>
+            <input class="form-input" id="cxInput" type="number" step="any" placeholder="0">
+          </div>
+          <div class="form-field">
+            <div class="form-label">cy</div>
+            <input class="form-input" id="cyInput" type="number" step="any" placeholder="0">
+          </div>
+        </div>
+
+        <div class="form-subtitle">畸变系数（k1, k2, p1, p2, k3）</div>
+        <div class="form-grid">
+          <div class="form-field">
+            <div class="form-label">k1</div>
+            <input class="form-input" id="k1Input" type="number" step="any" placeholder="0">
+          </div>
+          <div class="form-field">
+            <div class="form-label">k2</div>
+            <input class="form-input" id="k2Input" type="number" step="any" placeholder="0">
+          </div>
+          <div class="form-field">
+            <div class="form-label">p1</div>
+            <input class="form-input" id="p1Input" type="number" step="any" placeholder="0">
+          </div>
+          <div class="form-field">
+            <div class="form-label">p2</div>
+            <input class="form-input" id="p2Input" type="number" step="any" placeholder="0">
+          </div>
+          <div class="form-field">
+            <div class="form-label">k3</div>
+            <input class="form-input" id="k3Input" type="number" step="any" placeholder="0">
+          </div>
+        </div>
+
+        <div class="form-note">
+          K 将按 [[fx,0,cx],[0,fy,cy],[0,0,1]] 组装。若 fx/fy 仍为 0，后端会自动回退到单位阵避免计算报错。
+        </div>
+      </div>
+
+      <!-- 外参 -->
+      <div class="form-section">
+        <div class="form-title">外参偏置（单位：度；平移单位与ECEF一致）</div>
+        <div class="form-grid">
+          <div class="form-field">
+            <div class="form-label">yaw_offset</div>
+            <input class="form-input" id="yawOffInput" type="number" step="any" placeholder="0">
+          </div>
+          <div class="form-field">
+            <div class="form-label">pitch_offset</div>
+            <input class="form-input" id="pitchOffInput" type="number" step="any" placeholder="0">
+          </div>
+          <div class="form-field">
+            <div class="form-label">roll_offset</div>
+            <input class="form-input" id="rollOffInput" type="number" step="any" placeholder="0">
+          </div>
+          <div class="form-field">
+            <div class="form-label">dX</div>
+            <input class="form-input" id="dXInput" type="number" step="any" placeholder="0">
+          </div>
+          <div class="form-field">
+            <div class="form-label">dY</div>
+            <input class="form-input" id="dYInput" type="number" step="any" placeholder="0">
+          </div>
+          <div class="form-field">
+            <div class="form-label">dZ</div>
+            <input class="form-input" id="dZInput" type="number" step="any" placeholder="0">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn" id="cameraSaveBtn">保存</button>
+      <button class="btn" id="cameraResetBtn">恢复默认</button>
+      <button class="btn secondary" id="cameraCancelBtn">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- 在 index.html 的 cameraModal 之后添加导出连线图模态框 -->
+<div class="export-line-modal hidden" id="exportLineModal">
+  <div class="export-line-card">
+    <div class="export-line-header">
+      <span>导出连线图</span>
+      <div class="export-line-close" id="exportLineClose">&times;</div>
+    </div>
+    
+    <div class="export-line-body">
+      <div class="export-line-preview" id="exportLinePreview">
+        <!-- 预览画布将在这里动态创建 -->
+      </div>
+      
+      <div class="export-line-options">
+        <div class="export-line-option">
+          <div class="export-line-label">图片格式</div>
+          <select class="export-line-select" id="exportFormat">
+            <option value="png">PNG (高质量)</option>
+            <option value="jpeg">JPEG (较小文件)</option>
+          </select>
+        </div>
+        
+        <div class="export-line-option">
+          <div class="export-line-label">图片质量</div>
+          <select class="export-line-select" id="exportQuality">
+            <option value="1.0">最佳 (100%)</option>
+            <option value="0.9">高 (90%)</option>
+            <option value="0.8" selected>良好 (80%)</option>
+            <option value="0.7">中等 (70%)</option>
+            <option value="0.6">一般 (60%)</option>
+          </select>
+        </div>
+        
+        <div class="export-line-option">
+          <div class="export-line-label">图片尺寸</div>
+          <select class="export-line-select" id="exportSize">
+            <option value="original">原始大小</option>
+            <!-- <option value="2x">2倍尺寸</option>
+            <option value="3x" selected>3倍尺寸 (推荐)</option>
+            <option value="4x">4倍尺寸 (超高清)</option>
+            <option value="custom">自定义...</option> -->
+          </select>
+        </div>
+        
+        <div class="export-line-option" id="customSizeContainer" style="display: none;">
+          <div class="export-line-label">自定义宽度 (px)</div>
+          <input type="number" class="export-line-select" id="customWidth" min="100" max="10000" value="1920" placeholder="宽度">
+        </div>
+      </div>
+      
+      <div class="export-line-info">
+        提示：导出的图片将包含当前画布上的所有内容，包括图像、标注点和距离连线。<br>
+        建议使用3倍尺寸以获得高清效果，文件大小约为原始尺寸的9倍。
+      </div>
+    </div>
+    
+    <div class="export-line-controls">
+      <button class="btn secondary" id="exportLineCancel">取消</button>
+      <button class="btn" id="exportLineSave">保存图片</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
